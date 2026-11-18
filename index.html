@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#123b5d">
+<meta name="description" content="Offline ICU patient follow-up record for personal use">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<title>DMCH ICU Care</title>
+<style>
+:root{--navy:#123b5d;--blue:#176b87;--bg:#f3f6f8;--line:#d8e0e6;--ink:#17232d;--muted:#637381}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:var(--navy);color:white;padding:16px max(16px,env(safe-area-inset-left));position:sticky;top:0;z-index:5}
+header h1{font-size:20px;margin:0}header p{margin:4px 0 0;color:#d9e8f1;font-size:12px}
+main{max-width:1100px;margin:auto;padding:14px}
+nav{display:flex;gap:8px;overflow:auto;margin:0 0 14px}
+button,.tab{border:0;border-radius:9px;padding:11px 14px;background:var(--navy);color:#fff;font-weight:600;cursor:pointer}
+button.secondary,.tab{background:#e2eaf0;color:var(--navy)}button.danger{background:#a52c35}
+.tab.active{background:var(--blue);color:white}
+.panel,.card{background:white;border:1px solid var(--line);border-radius:13px;padding:15px;margin-bottom:13px}
+h2{font-size:18px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+label{display:block;font-size:12px;font-weight:650;color:#425466;margin-bottom:4px}
+input,select,textarea{width:100%;border:1px solid #cbd5dd;border-radius:8px;padding:10px;font:inherit;background:#fff;color:var(--ink);min-width:0}
+textarea{min-height:76px;resize:vertical}.wide{grid-column:1/-1}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.muted{color:var(--muted);font-size:12px}.patient{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:11px 0}.patient:last-child{border:0}
+.patient strong{display:block}.pill{display:inline-block;border-radius:20px;padding:3px 8px;background:#e5f0f5;color:#14536d;font-size:11px}
+.hidden{display:none!important}.statrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#edf3f6;padding:10px;border-radius:9px}.stat b{display:block;font-size:20px}
+#lock{max-width:430px;margin:10vh auto;padding:20px}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:20px}
+@media(max-width:600px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.statrow{grid-template-columns:repeat(3,1fr)}}
+@media print{body{background:white}header,nav,.no-print,footer{display:none!important}main{padding:0;max-width:none}.panel,.card{border:0;padding:0}.print-sheet{display:block!important}body *{visibility:hidden}.print-sheet,.print-sheet *{visibility:visible}.print-sheet{position:absolute;left:0;top:0;width:100%;padding:8mm}.print-sheet h2{text-align:center}.print-sheet table{width:100%;border-collapse:collapse;font-size:11px}.print-sheet td,.print-sheet th{border:1px solid #333;padding:5px;text-align:left;vertical-align:top}.print-sheet .signature{margin-top:35px;display:flex;justify-content:space-between}}
+</style>
+</head>
+<body>
+<header><h1>DMCH ICU Care</h1><p>Single-user · Offline patient follow-up records</p></header>
+
+<section id="lock" class="panel hidden">
+<h2>Unlock your records</h2>
+<p class="muted">Enter your app password. Records are encrypted on this device.</p>
+<label for="pass">Password</label><input id="pass" type="password" autocomplete="current-password" placeholder="Enter password">
+<div class="actions"><button id="unlockBtn">Unlock</button></div><p id="lockMsg" class="muted"></p>
+</section>
+
+<main id="app" class="hidden">
+<nav class="no-print">
+<button class="tab active" data-tab="dashboard">Dashboard</button>
+<button class="tab" data-tab="patients">Patients</button>
+<button class="tab" data-tab="followup">Daily follow-up</button>
+<button class="tab" data-tab="backup">Backup & settings</button>
+</nav>
+
+<section id="dashboard" class="view">
+<div class="panel"><h2>ICU Overview</h2><div class="statrow">
+<div class="stat"><b id="totalPatients">0</b><span class="muted">Total patients</span></div>
+<div class="stat"><b id="activePatients">0</b><span class="muted">Active</span></div>
+<div class="stat"><b id="totalReviews">0</b><span class="muted">Follow-ups</span></div>
+</div></div>
+<div class="panel"><h2>Recent patients</h2><div id="recentList" class="muted">No patients added yet.</div></div>
+</section>
+
+<section id="patients" class="view hidden">
+<div class="panel no-print"><h2>Register patient</h2>
+<form id="patientForm" class="grid">
+<div><label>Patient name / ID *</label><input name="name" required></div>
+<div><label>Hospital ID / UHID</label><input name="uhid"></div>
+<div><label>Age</label><input name="age" placeholder="e.g. 54 years"></div>
+<div><label>Sex</label><select name="sex"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+<div><label>ICU</label><select name="icu"><option>General ICU</option><option>Surgical ICU</option><option>Obs ICU</option><option>Burn ICU</option></select></div>
+<div><label>Bed</label><input name="bed"></div>
+<div><label>Admission date</label><input name="admission" type="date"></div>
+<div><label>Primary diagnosis</label><input name="diagnosis"></div>
+<div class="wide"><label>Relevant history / comorbidities</label><textarea name="history"></textarea></div>
+<div class="wide"><button type="submit">Save patient</button></div>
+</form></div>
+<div class="panel"><h2>Patient list</h2><div class="grid no-print"><div><label>Filter ICU</label><select id="icuFilter"><option value="">All ICUs</option><option>General ICU</option><option>Surgical ICU</option><option>Obs ICU</option><option>Burn ICU</option></select></div><div><label>Search name / ID</label><input id="patientSearch" placeholder="Search"></div></div><div id="patientList"></div></div>
+</section>
+
+<section id="followup" class="view hidden">
+<div class="panel no-print"><h2>Daily ICU follow-up</h2>
+<form id="reviewForm" class="grid">
+<div class="wide"><label>Patient *</label><select name="patientId" id="reviewPatient" required><option value="">Select patient</option></select></div>
+<div><label>Date & time</label><input name="datetime" type="datetime-local" required></div>
+<div><label>ICU day</label><input name="icuDay" type="number" min="0"></div>
+<div><label>GCS Eye (E)</label><select name="e"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+<div><label>GCS Verbal (V)</label><select name="v"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+<div><label>GCS Motor (M)</label><select name="m"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+<div><label>GCS total (auto)</label><input name="gcs" readonly></div>
+<div><label>Pupil size R / L</label><input name="pupilSize" placeholder="e.g. 3 mm / 3 mm"></div>
+<div><label>Pupil reaction</label><input name="pupilReaction" placeholder="e.g. B/L reactive"></div>
+<div><label>Plantar response R / L</label><input name="plantar"></div>
+<div><label>BP (mmHg)</label><input name="bp" placeholder="e.g. 120/80"></div>
+<div><label>Pulse (/min)</label><input name="pulse" type="number"></div>
+<div><label>MAP (mmHg)</label><input name="map" type="number"></div>
+<div><label>Vasopressor / dose</label><input name="vasopressor"></div>
+<div><label>SpO₂ (%)</label><input name="spo2" type="number"></div>
+<div><label>RR (/min)</label><input name="rr" type="number"></div>
+<div><label>O₂ support / flow</label><input name="oxygen"></div>
+<div><label>Ventilator mode</label><input name="ventMode"></div>
+<div><label>FiO₂ (%)</label><input name="fio2" type="number"></div>
+<div><label>PEEP (cmH₂O)</label><input name="peep" type="number"></div>
+<div><label>Vt (mL)</label><input name="vt" type="number"></div>
+<div><label>Ventilator RR</label><input name="ventRR" type="number"></div>
+<div class="wide"><label>Chest / lung examination</label><textarea name="chest"></textarea></div>
+<div><label>Temperature (°C)</label><input name="temp" type="number" step="0.1"></div>
+<div><label>RBS (mmol/L)</label><input name="rbs" type="number" step="0.1"></div>
+<div><label>Urine output (mL)</label><input name="urine" type="number"></div>
+<div><label>Other output (mL)</label><input name="otherOutput" type="number"></div>
+<div><label>Total intake (mL)</label><input name="intake" type="number"></div>
+<div><label>Fluid balance (auto, mL)</label><input name="balance" readonly></div>
+<div><label>Abdomen / bowel sounds</label><input name="abdomen"></div>
+<div><label>Tenderness</label><input name="tenderness"></div>
+<div class="wide"><label>Other problems / examination</label><textarea name="problems"></textarea></div>
+<div class="wide"><label>Investigation / reports summary</label><textarea name="investigations"></textarea></div>
+<div class="wide"><label>Assessment</label><textarea name="assessment"></textarea></div>
+<div class="wide"><label>Doctor's plan</label><textarea name="plan"></textarea></div>
+<div><label>Next review</label><input name="nextReview" type="datetime-local"></div>
+<div><label>Doctor name / designation</label><input name="doctor" placeholder="Name and designation"></div>
+<div class="wide"><button type="submit">Save follow-up</button></div>
+</form></div>
+<div class="panel"><h2>Follow-up records</h2><div id="reviewList" class="muted">Select a patient to view records.</div></div>
+</section>
+
+<section id="backup" class="view hidden">
+<div class="panel"><h2>Backup & security</h2>
+<p>Records are encrypted using your password and stored in this browser on this device. If you clear browser data, uninstall the browser, or lose the device, records may be lost unless you export a backup.</p>
+<div class="actions"><button id="exportBtn">Export encrypted backup</button><label class="tab" for="importFile">Import backup</label><input id="importFile" type="file" accept="application/json" class="hidden"></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+<label>Change app password</label><input id="newPass" type="password" placeholder="New password (minimum 8 characters)">
+<div class="actions"><button id="changePassBtn" class="secondary">Change password</button><button id="lockBtn" class="danger">Lock app</button></div>
+<p class="muted">Do not share your password or backup file. Use only with institutional approval and follow DMCH patient-data policies.</p>
+</div>
+<div class="panel"><h2>About</h2><p class="muted">Personal documentation tool. It does not provide diagnosis, treatment recommendations, alarms, or clinical decision support. Verify all entries independently.</p><p class="muted">Version 0.1 · Single-user prototype</p></div>
+</section>
+<div id="printArea" class="print-sheet hidden"></div>
+</main>
+<footer>DMCH ICU Care · Personal offline record prototype · Not an official DMCH system</footer>
+<script src="app.js"></script>
+</body></html>
